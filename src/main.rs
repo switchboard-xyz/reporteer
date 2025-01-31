@@ -1,4 +1,3 @@
-
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use askama::Template;
 use log::{info, warn};
@@ -37,7 +36,7 @@ async fn index(state: web::Data<AppState>) -> impl Responder {
     let template = IndexTemplate {
         derived_key_hash: hash.clone(),
     };
-    
+
     match template.render() {
         Ok(html) => HttpResponse::Ok().content_type("text/html").body(html),
         Err(_) => HttpResponse::InternalServerError().finish(),
@@ -50,8 +49,15 @@ async fn get_hash(state: web::Data<AppState>) -> impl Responder {
     let response = HashResponse {
         derived_key_hash: hash.clone(),
     };
-    
+
     HttpResponse::Ok().json(response)
+}
+
+// Handler for the health check endpoint
+async fn health() -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "healthy"
+    }))
 }
 
 // Function to fetch and hash the derived key
@@ -62,17 +68,14 @@ async fn fetch_derived_key(endpoint_url: &str) -> Result<String> {
         .send()
         .await
         .map_err(ReporteerError::FetchError)?;
-    
-    let derived_key = response
-        .text()
-        .await
-        .map_err(ReporteerError::FetchError)?;
-    
+
+    let derived_key = response.text().await.map_err(ReporteerError::FetchError)?;
+
     // Create SHA-256 hash of the derived key
     let mut hasher = Sha256::new();
     hasher.update(derived_key.as_bytes());
     let hash = hasher.finalize();
-    
+
     Ok(format!("{:x}", hash))
 }
 
@@ -111,6 +114,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .route("/", web::get().to(index))
             .route("/api/hash", web::get().to(get_hash))
+            .route("/health", web::get().to(health))
     })
     .bind(("0.0.0.0", config.server_port()))?
     .run()
@@ -131,8 +135,9 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state.clone())
-                .route("/api/hash", web::get().to(get_hash))
-        ).await;
+                .route("/api/hash", web::get().to(get_hash)),
+        )
+        .await;
 
         let req = test::TestRequest::get().uri("/api/hash").to_request();
         let resp = test::call_service(&app, req).await;
@@ -148,10 +153,20 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state.clone())
-                .route("/", web::get().to(index))
-        ).await;
+                .route("/", web::get().to(index)),
+        )
+        .await;
 
         let req = test::TestRequest::get().uri("/").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_health_endpoint() {
+        let app = test::init_service(App::new().route("/health", web::get().to(health))).await;
+
+        let req = test::TestRequest::get().uri("/health").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
     }
