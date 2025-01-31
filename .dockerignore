@@ -1,0 +1,57 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+docs/
+
+# Debug files
+*.log
+*.prof
+
+# Test files
+tests/
+*_test.rs
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Kubernetes files
+k8s/
+*.yaml
+*.yml
+
+# Development scripts
+scripts/
+*.sh
+
+# Temporary files
+tmp/
+temp/
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,40 @@
+[package]
+name = "reporteer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lele <emanuele.lele.calo@gmail.com"]
+description = "A service for fetching and exposing derived keys from TEE platforms"
+license = "MIT"
+
+[dependencies]
+# Web framework
+actix-web = "4.4"
+
+# Async runtime
+tokio = { version = "1.33", features = ["full"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Templating
+askama = "0.12"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# URL parsing
+url = { version = "2", features = ["serde"] }
+
+# Cryptography
+sha2 = "0.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
