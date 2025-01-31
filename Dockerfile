@@ -41,21 +41,18 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 # Copy manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Cache dependencies
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
-    mkdir src && echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
+COPY templates /app/templates
+
+## Cache dependencies
+#RUN mkdir src && echo "fn main() {}" > src/main.rs && \
+#    cargo build --release && \
+#    rm -rf src
 
 # Copy source code
 COPY src ./src/
-COPY templates ./templates/
 
 # Build for release
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
-    cargo build --release
+RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
