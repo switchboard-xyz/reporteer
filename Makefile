@@ -1,5 +1,5 @@
 # Variables
-USER ?= "$$(whoami)"
+ORG ?= "switchboardlabs"
 DOCKER_IMAGE ?= "reporteer"
 DOCKER_TAG ?= "latest"
 PLATFORM ?= linux/amd64
@@ -21,7 +21,6 @@ help:  ## Display this help message
 		@awk 'BEGIN {FS = ":.*##"; printf "\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  %-40s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 		@echo ""
 		@echo "Environment variables:"
-		@echo "  USER          Current user (default: $$(whoami))"
 		@echo "  DOCKER_IMAGE  Docker image name (default: reporteer)"
 		@echo "  DOCKER_TAG    Docker tag (default: latest)"
 		@echo "  PLATFORM      Build platform (default: linux/amd64)"
@@ -46,42 +45,42 @@ docker-build-no-cache:  ## Build Docker image with Git hash tag
 		--pull \
 		--platform $(PLATFORM) \
 		-f ./Dockerfile \
-		-t "$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)" \
+		-t "$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)" \
 		./ && \
-		echo "Built $(USER)/$(DOCKER_IMAGE):$(GIT_HASH)"
+		echo "Built $(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)"
 
 docker-build:  ## Build Docker image with Git hash tag
 		docker buildx build \
 		--pull \
 		--platform $(PLATFORM) \
 		-f ./Dockerfile \
-		-t "$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)" \
+		-t "$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)" \
 		./ && \
-		echo "Built $(USER)/$(DOCKER_IMAGE):$(GIT_HASH)"
+		echo "Built $(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)"
 
 docker-run:  ## Run Docker container
 		docker run -p $(PORT):$(PORT) \
 		-e RUST_LOG=info \
 		-e REPORTEER_SERVER_PORT=$(PORT) \
 		-e REPORTEER_ENDPOINT_URL=http://127.0.0.1:8006/derived_key \
-		"$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)"
+		"$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)"
 
 docker-release: docker-build docker-push  ## Build and push Docker image with Git hash tag
 docker-release-latest: docker-release docker-tag-latest docker-push-latest  ## Build and push Docker image with both Git hash and latest tags
 
 docker-push:  ## Push Docker image with Git hash tag
-		docker push "$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)" && \
-		echo "Pushed $(USER)/$(DOCKER_IMAGE):$(GIT_HASH)"
+		docker push "$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)" && \
+		echo "Pushed $(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)"
 
 docker-tag-latest:  ## Tag Docker image as latest
 		docker tag \
-		"$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)" \
-		"$(USER)/$(DOCKER_IMAGE):latest" && \
-		echo "Tagged $(USER)/$(DOCKER_IMAGE):$(GIT_HASH) as $(USER)/$(DOCKER_IMAGE):latest"
+		"$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)" \
+		"$(ORG)/$(DOCKER_IMAGE):latest" && \
+		echo "Tagged $(ORG)/$(DOCKER_IMAGE):$(GIT_HASH) as $(ORG)/$(DOCKER_IMAGE):latest"
 
 docker-push-latest:  ## Push Docker image with latest tag
-		docker push "$(USER)/$(DOCKER_IMAGE):latest" && \
-		echo "Pushed $(USER)/$(DOCKER_IMAGE):latest"
+		docker push "$(ORG)/$(DOCKER_IMAGE):latest" && \
+		echo "Pushed $(ORG)/$(DOCKER_IMAGE):latest"
 
 # Development targets
 dev-build:  ## Build the project locally using cargo
@@ -92,6 +91,6 @@ dev-run: dev-build  ## Build and run the project locally
 
 dev-clean:  ## Clean up build artifacts and Docker images
 		cargo clean
-		docker rmi -f "$(USER)/$(DOCKER_IMAGE):$(GIT_HASH)" "$(USER)/$(DOCKER_IMAGE):latest" 2>/dev/null || true
+		docker rmi -f "$(ORG)/$(DOCKER_IMAGE):$(GIT_HASH)" "$(ORG)/$(DOCKER_IMAGE):latest" 2>/dev/null || true
 
 # vim: set filetype=make foldmethod=marker foldlevel=0 noexpandtab:
