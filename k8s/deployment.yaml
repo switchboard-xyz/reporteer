@@ -17,7 +17,7 @@ spec:
       runtimeClassName: kata-qemu
       containers:
       - name: reporteer
-        image: reporteer:latest
+        image: switchboardlabs/reporteer:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
