@@ -112,7 +112,7 @@ async fn main() -> std::io::Result<()> {
 
     // Start the web server
     info!("Starting server on port {}", config.server_port());
-    let enclave_key = EnclaveKeys::get_derived_key().unwrap();
+    let enclave_key = EnclaveKeys::get_derived_key().unwrap().try_into().unwrap();
     println!("Enclave key: {:?}", &enclave_key[0]);
     let report = AmdSevSnpAttestation::attest(b"hola").await.unwrap();
     println!("Report: {:?}", report);
