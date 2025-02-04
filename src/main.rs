@@ -110,30 +110,22 @@ async fn main() -> std::io::Result<()> {
         derived_key_hash: Arc::new(RwLock::new(derived_key_hash)),
     });
 
-    // Start the web server
-    info!("Starting server on port {}", config.server_port());
+    // Get the derived key
+    info!("Fetching Derived key");
     let enclave_key = match EnclaveKeys::get_derived_key() {
         Ok(derived_key) => {
             println!(
                 "Debug: derived_key type: {:?}",
                 std::any::type_name_of_val(&derived_key)
             );
-            let key_vec: Vec<u8> = derived_key.as_ref().to_vec();
-            println!("Debug: key_vec length: {}", key_vec.len());
-            println!("Debug: key_vec contents: {:?}", key_vec);
+            println!("Debug: derived_key length: {}", derived_key.len());
 
-            if key_vec.len() < 32 {
-                warn!("Derived key too short: {} bytes", key_vec.len());
+            if derived_key.len() < 32 {
+                warn!("Derived key too short: {} bytes", derived_key.len());
                 return Ok(());
             }
 
-            // Try to convert Vec<u8> to array
-            let key_array: [u8; 32] = key_vec
-                .try_into()
-                .expect("Failed to convert vector to array");
-            println!("Debug: Successfully converted to [u8; 32]");
-
-            key_array
+            derived_key // Use the [u8; 32] directly
         }
         Err(e) => {
             warn!("Failed to get derived key: {}", e);
@@ -146,9 +138,12 @@ async fn main() -> std::io::Result<()> {
         println!("Enclave key first byte: {:?}", enclave_key[0]);
     }
 
+    // Test AMD attestation
     let report = AmdSevSnpAttestation::attest(b"hola").await.unwrap();
     println!("Report: {:?}", report);
 
+    // Start web server
+    info!("Starting server on port {}", config.server_port());
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
