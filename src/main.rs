@@ -114,12 +114,26 @@ async fn main() -> std::io::Result<()> {
     info!("Starting server on port {}", config.server_port());
     let enclave_key = match EnclaveKeys::get_derived_key() {
         Ok(derived_key) => {
+            println!(
+                "Debug: derived_key type: {:?}",
+                std::any::type_name_of_val(&derived_key)
+            );
             let key_vec: Vec<u8> = derived_key.as_ref().to_vec();
+            println!("Debug: key_vec length: {}", key_vec.len());
+            println!("Debug: key_vec contents: {:?}", key_vec);
+
             if key_vec.len() < 32 {
                 warn!("Derived key too short: {} bytes", key_vec.len());
                 return Ok(());
             }
-            key_vec
+
+            // Try to convert Vec<u8> to array
+            let key_array: [u8; 32] = key_vec
+                .try_into()
+                .expect("Failed to convert vector to array");
+            println!("Debug: Successfully converted to [u8; 32]");
+
+            key_array
         }
         Err(e) => {
             warn!("Failed to get derived key: {}", e);
