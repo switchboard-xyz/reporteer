@@ -1,4 +1,4 @@
-FROM rust:1.73-slim-bookworm AS builder
+FROM rust:1.84-slim-bookworm AS builder
 
 # Create a new empty shell project
 RUN USER=root cargo new --bin reporteer

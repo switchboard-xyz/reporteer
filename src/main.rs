@@ -4,6 +4,9 @@ use log::{info, warn};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use sail_sdk;
+use sail_sdk::AmdSevSnpAttestation;
+use sail_sdk::EnclaveKeys;
 
 mod config;
 mod error;
@@ -109,6 +112,11 @@ async fn main() -> std::io::Result<()> {
 
     // Start the web server
     info!("Starting server on port {}", config.server_port());
+    let enclave_key = EnclaveKeys::get_derived_key().unwrap();
+    println!("Enclave key: {:?}", enclave_key[0]);
+    let report = AmdSevSnpAttestation::attest(b"hola").await.unwrap();
+    println!("Report: {:?}", report);
+
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
