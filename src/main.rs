@@ -112,23 +112,41 @@ async fn main() -> std::io::Result<()> {
 
     // Get the derived key
     info!("Fetching Derived key");
+    println!("Debug: About to call EnclaveKeys::get_derived_key()");
     let enclave_key = match EnclaveKeys::get_derived_key() {
         Ok(derived_key) => {
+            println!("Debug: Successfully got derived_key");
             println!(
                 "Debug: derived_key type: {:?}",
                 std::any::type_name_of_val(&derived_key)
             );
-            println!("Debug: derived_key length: {}", derived_key.len());
 
-            if derived_key.len() < 32 {
-                warn!("Derived key too short: {} bytes", derived_key.len());
-                return Ok(());
-            }
+            // Try to access the bytes directly to see what we're working with
+            let bytes = derived_key.as_ref();
+            println!(
+                "Debug: bytes type: {:?}",
+                std::any::type_name_of_val(&bytes)
+            );
+            println!("Debug: bytes length: {}", bytes.len());
+            println!("Debug: bytes content: {:?}", bytes);
 
-            derived_key // Use the [u8; 32] directly
+            // Let's try to create a new array from the bytes
+            let array: [u8; 32] = match bytes.try_into() {
+                Ok(arr) => {
+                    println!("Debug: Successfully converted to [u8; 32]");
+                    arr
+                }
+                Err(e) => {
+                    println!("Debug: Failed to convert to [u8; 32]: {:?}", e);
+                    return Ok(());
+                }
+            };
+
+            array
         }
         Err(e) => {
             warn!("Failed to get derived key: {}", e);
+            println!("Debug: Error details: {:?}", e);
             return Ok(());
         }
     };
