@@ -82,7 +82,7 @@ async fn fetch_derived_key(endpoint_url: &str) -> Result<String> {
     Ok(format!("{:x}", hash))
 }
 
-#[actix_web::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> std::io::Result<()> {
     // Initialize logging
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
