@@ -112,8 +112,26 @@ async fn main() -> std::io::Result<()> {
 
     // Start the web server
     info!("Starting server on port {}", config.server_port());
-    let enclave_key: [u8; 32] = EnclaveKeys::get_derived_key().unwrap().try_into().unwrap();
-    println!("Enclave key: {:?}", enclave_key[0]);
+    let enclave_key: Vec<u8> = match EnclaveKeys::get_derived_key() {
+        Ok(derived_key) => {
+            let key_vec = derived_key.to_vec();
+            if key_vec.len() < 32 {
+                warn!("Derived key too short: {} bytes", key_vec.len());
+                return Ok(());
+            }
+            key_vec
+        }
+        Err(e) => {
+            warn!("Failed to get derived key: {}", e);
+            return Ok(());
+        }
+    };
+
+    // Access first byte if vector is not empty
+    if !enclave_key.is_empty() {
+        println!("Enclave key first byte: {:?}", enclave_key[0]);
+    }
+
     let report = AmdSevSnpAttestation::attest(b"hola").await.unwrap();
     println!("Report: {:?}", report);
 
