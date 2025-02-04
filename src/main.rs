@@ -114,7 +114,7 @@ async fn main() -> std::io::Result<()> {
     info!("Starting server on port {}", config.server_port());
     let enclave_key: Vec<u8> = match EnclaveKeys::get_derived_key() {
         Ok(derived_key) => {
-            let key_vec = derived_key.to_vec();
+            let key_vec = derived_key.as_ref().to_vec();
             if key_vec.len() < 32 {
                 warn!("Derived key too short: {} bytes", key_vec.len());
                 return Ok(());
