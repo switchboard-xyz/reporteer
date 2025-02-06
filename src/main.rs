@@ -1,6 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use askama::Template;
-use log::{info, warn};
+use log::{debug, info, warn};
 use sail_sdk;
 use sail_sdk::AmdSevSnpAttestation;
 use sail_sdk::EnclaveKeys;
@@ -112,32 +112,17 @@ async fn main() -> std::io::Result<()> {
 
     // Get the derived key
     info!("Fetching Derived key");
-    println!("Debug: About to call EnclaveKeys::get_derived_key()");
     let enclave_key = match EnclaveKeys::get_derived_key() {
         Ok(derived_key) => {
-            println!("Debug: Successfully got derived_key");
-            println!(
-                "Debug: derived_key type: {:?}",
-                std::any::type_name_of_val(&derived_key)
-            );
-
             // Try to access the bytes directly to see what we're working with
             let bytes = derived_key.as_ref();
-            println!(
-                "Debug: bytes type: {:?}",
-                std::any::type_name_of_val(&bytes)
-            );
-            println!("Debug: bytes length: {}", bytes.len());
-            println!("Debug: bytes content: {:?}", bytes);
+            debug!("Response content [in bytes]: {:?}", bytes);
 
             // Let's try to create a new array from the bytes
             let array: [u8; 32] = match bytes.try_into() {
-                Ok(arr) => {
-                    println!("Debug: Successfully converted to [u8; 32]");
-                    arr
-                }
+                Ok(arr) => arr,
                 Err(e) => {
-                    println!("Debug: Failed to convert to [u8; 32]: {:?}", e);
+                    debug!("Failed to convert to [u8; 32]: {:?}", e);
                     return Ok(());
                 }
             };
@@ -146,19 +131,19 @@ async fn main() -> std::io::Result<()> {
         }
         Err(e) => {
             warn!("Failed to get derived key: {}", e);
-            println!("Debug: Error details: {:?}", e);
+            debug!("Error details: {:?}", e);
             return Ok(());
         }
     };
 
     // Access first byte if vector is not empty
     if !enclave_key.is_empty() {
-        println!("Enclave key first byte: {:?}", enclave_key[0]);
+        info!("Enclave key first byte: {:?}", enclave_key[0]);
     }
 
     // Test AMD attestation
-    let report = AmdSevSnpAttestation::attest(b"hola").await.unwrap();
-    println!("Report: {:?}", report);
+    let report = AmdSevSnpAttestation::attest("hola").await.unwrap();
+    info!("Report: {:?}", report);
 
     // Start web server
     info!("Starting server on port {}", config.server_port());
