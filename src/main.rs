@@ -141,9 +141,24 @@ async fn main() -> std::io::Result<()> {
         info!("Enclave key first byte: {:?}", enclave_key[0]);
     }
 
+    let test_msg: Option<&str> = Some("hola");
     // Test AMD attestation
-    let report = AmdSevSnpAttestation::attest("hola").await.unwrap();
+    let report = if let Some(msg) = test_msg {
+        AmdSevSnpAttestation::attest(msg).await.unwrap()
+    } else {
+        return Ok(());
+    };
     info!("Report: {:?}", report);
+
+    // Test AMD report verification
+    let verification = if let Some(msg) = test_msg {
+        AmdSevSnpAttestation::verify(&report, Some(msg.as_bytes()))
+            .await
+            .unwrap()
+    } else {
+        return Ok(());
+    };
+    info!("Verification: {:?}", verification);
 
     // Start web server
     info!("Starting server on port {}", config.server_port());
