@@ -108,6 +108,8 @@ metadata:
   name: oracle-landing-page
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: true                                                                                                                                                                                                                                                        │
 spec:
   ingressClassName: nginx
   tls:
@@ -118,10 +120,9 @@ spec:
   - host: YOUR_HOST
     http:
       paths:
-      - path: /
+      - path: /reporteer(/?)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: reporteer
             port:
-              number: 3000
