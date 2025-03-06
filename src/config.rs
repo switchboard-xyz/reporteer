@@ -11,6 +11,8 @@ pub struct Config {
     server_port: u16,
     /// Log level configuration
     log_level: String,
+    /// Whether to verify on startup
+    verify_on_start: bool,
 }
 
 impl Default for Config {
@@ -20,6 +22,7 @@ impl Default for Config {
                 .expect("Invalid default URL"),
             server_port: 3000,
             log_level: "info".to_string(),
+            verify_on_start: false,
         }
     }
 }
@@ -46,10 +49,15 @@ impl Config {
 
         let log_level = env::var("REPORTEER_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
 
+        let verify_on_start = env::var("REPORTEER_VERIFY_ON_START")
+            .map(|val| val.to_lowercase() == "true")
+            .unwrap_or(false);
+
         Ok(Self {
             endpoint_url,
             server_port,
             log_level,
+            verify_on_start,
         })
     }
 
@@ -59,6 +67,14 @@ impl Config {
 
     pub fn server_port(&self) -> u16 {
         self.server_port
+    }
+
+    pub fn verify_on_start(&self) -> bool {
+        self.verify_on_start
+    }
+
+    pub fn log_level(&self) -> &str {
+        &self.log_level
     }
 }
 
@@ -76,6 +92,7 @@ mod tests {
         );
         assert_eq!(config.server_port(), 3000);
         assert_eq!(config.log_level(), "info");
+        assert_eq!(config.verify_on_start(), false);
     }
 
     #[test]
@@ -83,16 +100,19 @@ mod tests {
         env::set_var("REPORTEER_ENDPOINT_URL", "http://localhost:9000/key");
         env::set_var("REPORTEER_SERVER_PORT", "8080");
         env::set_var("REPORTEER_LOG_LEVEL", "debug");
+        env::set_var("REPORTEER_VERIFY_ON_START", "true");
 
         let config = Config::from_env().unwrap();
         assert_eq!(config.endpoint_url().as_str(), "http://localhost:9000/key");
         assert_eq!(config.server_port(), 8080);
         assert_eq!(config.log_level(), "debug");
+        assert_eq!(config.verify_on_start(), true);
 
         // Clean up environment
         env::remove_var("REPORTEER_ENDPOINT_URL");
         env::remove_var("REPORTEER_SERVER_PORT");
         env::remove_var("REPORTEER_LOG_LEVEL");
+        env::remove_var("REPORTEER_VERIFY_ON_START");
     }
 
     #[test]

@@ -104,6 +104,10 @@ async fn main() -> std::io::Result<()> {
 
     // Log the hash at startup
     info!("Initial derived key hash: {}", derived_key_hash);
+    
+    // Log configuration settings
+    info!("Configuration: Server port={}, Verify on start={}", 
+          config.server_port(), config.verify_on_start());
 
     // Create application state
     let app_state = web::Data::new(AppState {
@@ -141,24 +145,30 @@ async fn main() -> std::io::Result<()> {
         info!("Enclave key first byte: {:?}", enclave_key[0]);
     }
 
-    let test_msg: Option<&str> = Some("hola");
-    // Test AMD attestation
-    let report = if let Some(msg) = test_msg {
-        AmdSevSnpAttestation::attest(msg).await.unwrap()
-    } else {
-        return Ok(());
-    };
-    info!("Report: {:?}", report);
+    // Only perform verification if VERIFY_ON_START is enabled
+    if config.verify_on_start() {
+        info!("Verification on start is enabled, performing attestation and verification");
+        let test_msg: Option<&str> = Some("hola");
+        // Test AMD attestation
+        let report = if let Some(msg) = test_msg {
+            AmdSevSnpAttestation::attest(msg).await.unwrap()
+        } else {
+            return Ok(());
+        };
+        info!("Report: {:?}", report);
 
-    // Test AMD report verification
-    let verification = if let Some(msg) = test_msg {
-        AmdSevSnpAttestation::verify(&report, Some(msg.as_bytes()))
-            .await
-            .unwrap()
+        // Test AMD report verification
+        let verification = if let Some(msg) = test_msg {
+            AmdSevSnpAttestation::verify(&report, Some(msg.as_bytes()))
+                .await
+                .unwrap()
+        } else {
+            return Ok(());
+        };
+        info!("Verification: {:?}", verification);
     } else {
-        return Ok(());
-    };
-    info!("Verification: {:?}", verification);
+        info!("Verification on start is disabled, skipping attestation and verification");
+    }
 
     // Start web server
     info!("Starting server on port {}", config.server_port());
