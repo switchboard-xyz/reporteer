@@ -44,6 +44,11 @@ spec:
             configMapKeyRef:
               name: reporteer-config
               key: log_level
+        - name: VERIFY_AT_START
+          valueFrom:
+            configMapKeyRef:
+              name: reporteer-config
+              key: verify_at_start
         resources:
           requests:
             memory: "128Mi"
@@ -95,3 +100,4 @@ data:
   server_port: "3000"
   endpoint_url: "http://127.0.0.1:8006/derived_key"
   log_level: "info"
+  verify_at_start: "false"
