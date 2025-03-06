@@ -48,11 +48,15 @@
 </head>
 <body>
     <div class="container">
+        <h1>Attestation Report</h1>
+        <div class="hash-container">
+            {{ attestation_report }}
+        </div>
         <h1>Derived Key Hash</h1>
         <div class="hash-container">
             {{ derived_key_hash }}
         </div>
-        
+
         <div class="api-info">
             <h2>API Endpoint</h2>
             <p>The hash is also available via the JSON API endpoint at: <code>/api/hash</code></p>

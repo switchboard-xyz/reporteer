@@ -11,14 +11,16 @@ pub struct Config {
     server_port: u16,
     /// Log level configuration
     log_level: String,
+    /// Verify the attestation report before starting
+    verify_at_start: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            endpoint_url: Url::parse("http://127.0.0.1:8006/derived_key")
-                .expect("Invalid default URL"),
-            server_port: 3000,
+              server_port: 3000,
+              log_level: "info".to_string(),
+              verify_at_start: false,
             log_level: "info".to_string(),
         }
     }
@@ -43,10 +45,14 @@ impl Config {
                     .map_err(|e| ReporteerError::ConfigError(format!("Invalid server port: {}", e)))
             })
             .unwrap_or_else(|_| Ok(3000))?;
-
-        let log_level = env::var("REPORTEER_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
-
-        Ok(Self {
+          let verify_at_start = env::var("VERIFY_AT_START")
+              .map(|v| v.parse::<bool>().unwrap_or(false))
+          Ok(Self {
+              endpoint_url,
+              server_port,
+              log_level,
+              verify_at_start,
+          })
             endpoint_url,
             server_port,
             log_level,

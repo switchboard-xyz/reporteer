@@ -17,26 +17,33 @@ use error::{ReporteerError, Result};
 // Struct to hold the derived key hash
 #[derive(Clone)]
 struct AppState {
+    attestation_report: Arc<RwLock<String>>,
     derived_key_hash: Arc<RwLock<String>>,
 }
 
 // Template for the HTML page
 #[derive(Template)]
-#[template(path = "index.html")]
-struct IndexTemplate {
-    derived_key_hash: String,
-}
-
-// JSON response structure
-#[derive(serde::Serialize)]
-struct HashResponse {
+      // Test AMD report verification only if verify_at_start is true
+      if config.verify_at_start {
+          let verification = if let Some(msg) = test_msg {
+              AmdSevSnpAttestation::verify(&attestation_report, Some(msg.as_bytes()))
+                  .await
+                  .unwrap()
+          } else {
+              return Ok(());
+          };
+          info!("Verification: {:?}", verification);
+      }
+    attestation_report: String,
     derived_key_hash: String,
 }
 
 // Handler for the HTML endpoint
 async fn index(state: web::Data<AppState>) -> impl Responder {
     let hash = state.derived_key_hash.read().await;
+    let report = state.attestation_report.read().await;
     let template = IndexTemplate {
+        attestation_report: report.clone(),
         derived_key_hash: hash.clone(),
     };
 
@@ -47,9 +54,11 @@ async fn index(state: web::Data<AppState>) -> impl Responder {
 }
 
 // Handler for the JSON endpoint
-async fn get_hash(state: web::Data<AppState>) -> impl Responder {
+async fn get_data(state: web::Data<AppState>) -> impl Responder {
     let hash = state.derived_key_hash.read().await;
-    let response = HashResponse {
+    let report = state.attestation_report.read().await;
+    let response = ApiResponse {
+        attestation_report: report.clone(),
         derived_key_hash: hash.clone(),
     };
 
@@ -105,11 +114,6 @@ async fn main() -> std::io::Result<()> {
     // Log the hash at startup
     info!("Initial derived key hash: {}", derived_key_hash);
 
-    // Create application state
-    let app_state = web::Data::new(AppState {
-        derived_key_hash: Arc::new(RwLock::new(derived_key_hash)),
-    });
-
     // Get the derived key
     info!("Fetching Derived key");
     let enclave_key = match EnclaveKeys::get_derived_key() {
@@ -143,22 +147,30 @@ async fn main() -> std::io::Result<()> {
 
     let test_msg: Option<&str> = Some("hola");
     // Test AMD attestation
-    let report = if let Some(msg) = test_msg {
+    let attestation_report = if let Some(msg) = test_msg {
         AmdSevSnpAttestation::attest(msg).await.unwrap()
     } else {
         return Ok(());
     };
-    info!("Report: {:?}", report);
+    info!("Report: {:?}", attestation_report);
 
     // Test AMD report verification
-    let verification = if let Some(msg) = test_msg {
-        AmdSevSnpAttestation::verify(&report, Some(msg.as_bytes()))
-            .await
-            .unwrap()
-    } else {
-        return Ok(());
+    if config.verify_at_start {
+        let verification = if let Some(msg) = test_msg {
+            AmdSevSnpAttestation::verify(&attestation_report, Some(msg.as_bytes()))
+                .await
+                .unwrap()
+        } else {
+            return Ok(());
+        };
+        info!("Verification: {:?}", verification);
     };
-    info!("Verification: {:?}", verification);
+
+    // Create application state
+    let app_state = web::Data::new(AppState {
+        attestation_report: Arc::new(RwLock::new(attestation_report)),
+        derived_key_hash: Arc::new(RwLock::new(derived_key_hash)),
+    });
 
     // Start web server
     info!("Starting server on port {}", config.server_port());
@@ -166,7 +178,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .route("/", web::get().to(index))
-            .route("/api/hash", web::get().to(get_hash))
+            .route("/api/data", web::get().to(get_data))
             .route("/health", web::get().to(health))
     })
     .bind(("0.0.0.0", config.server_port()))?
@@ -180,19 +192,19 @@ mod tests {
     use actix_web::test;
 
     #[actix_web::test]
-    async fn test_get_hash_endpoint() {
+    async fn test_get_data_endpoint() {
         let app_state = web::Data::new(AppState {
-            derived_key_hash: Arc::new(RwLock::new("test_hash".to_string())),
+            derived_key_hash: Arc::new(RwLock::new("test_data".to_string())),
         });
 
         let app = test::init_service(
             App::new()
                 .app_data(app_state.clone())
-                .route("/api/hash", web::get().to(get_hash)),
+                .route("/api/data", web::get().to(get_data)),
         )
         .await;
 
-        let req = test::TestRequest::get().uri("/api/hash").to_request();
+        let req = test::TestRequest::get().uri("/api/data").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
     }
@@ -200,7 +212,7 @@ mod tests {
     #[actix_web::test]
     async fn test_index_endpoint() {
         let app_state = web::Data::new(AppState {
-            derived_key_hash: Arc::new(RwLock::new("test_hash".to_string())),
+            derived_key_hash: Arc::new(RwLock::new("test_data".to_string())),
         });
 
         let app = test::init_service(
