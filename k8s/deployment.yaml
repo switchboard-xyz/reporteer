@@ -13,8 +13,12 @@ spec:
     metadata:
       labels:
         app: reporteer
+      annotations:
+        io.katacontainers.config.hypervisor.kernel_params: " agent.guest_components_rest_api=all"
+        io.containerd.cri.runtime-handler: kata-qemu-snp
+
     spec:
-      runtimeClassName: kata-qemu
+      runtimeClassName: kata-qemu-snp
       containers:
       - name: reporteer
         image: switchboardlabs/reporteer:latest
@@ -23,6 +27,8 @@ spec:
         - containerPort: 3000
           name: http
         env:
+        - name: SEV_SNP_CACHE_PATH
+          value: "/tmp/certs"
         - name: REPORTEER_SERVER_PORT
           valueFrom:
             configMapKeyRef:
