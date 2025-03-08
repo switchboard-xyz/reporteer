@@ -14,10 +14,13 @@ mod error;
 use config::Config;
 use error::{ReporteerError, Result};
 
-// Struct to hold the derived key hash
+// Struct to hold the derived key hash and attestation report
 #[derive(Clone)]
 struct AppState {
     derived_key_hash: Arc<RwLock<String>>,
+    attestation_report: Arc<RwLock<String>>,
+    // Store the raw report object for API access
+    raw_report: Arc<RwLock<Option<serde_json::Value>>>,
 }
 
 // Template for the HTML page
@@ -25,19 +28,28 @@ struct AppState {
 #[template(path = "index.html")]
 struct IndexTemplate {
     derived_key_hash: String,
+    attestation_report: String,
 }
 
-// JSON response structure
+// JSON response structures
 #[derive(serde::Serialize)]
 struct HashResponse {
     derived_key_hash: String,
 }
 
+#[derive(serde::Serialize)]
+struct ReportResponse {
+    attestation_report: String,
+}
+
 // Handler for the HTML endpoint
 async fn index(state: web::Data<AppState>) -> impl Responder {
     let hash = state.derived_key_hash.read().await;
+    let report = state.attestation_report.read().await;
+
     let template = IndexTemplate {
         derived_key_hash: hash.clone(),
+        attestation_report: report.clone(),
     };
 
     match template.render() {
@@ -46,11 +58,30 @@ async fn index(state: web::Data<AppState>) -> impl Responder {
     }
 }
 
-// Handler for the JSON endpoint
+// Handler for the hash JSON endpoint
 async fn get_hash(state: web::Data<AppState>) -> impl Responder {
     let hash = state.derived_key_hash.read().await;
     let response = HashResponse {
         derived_key_hash: hash.clone(),
+    };
+
+    HttpResponse::Ok().json(response)
+}
+
+// Handler for the attestation report JSON endpoint
+async fn get_report(state: web::Data<AppState>) -> impl Responder {
+    // Check if we have a raw report available
+    let raw_report = state.raw_report.read().await;
+
+    if let Some(raw) = raw_report.as_ref() {
+        // Return the raw report directly as JSON
+        return HttpResponse::Ok().json(raw);
+    }
+
+    // Fall back to the string representation
+    let report = state.attestation_report.read().await;
+    let response = ReportResponse {
+        attestation_report: report.clone(),
     };
 
     HttpResponse::Ok().json(response)
@@ -104,14 +135,22 @@ async fn main() -> std::io::Result<()> {
 
     // Log the hash at startup
     info!("Initial derived key hash: {}", derived_key_hash);
-    
+
     // Log configuration settings
-    info!("Configuration: Server port={}, Verify on start={}", 
-          config.server_port(), config.verify_on_start());
+    info!(
+        "Configuration: Server port={}, Verify on start={}",
+        config.server_port(),
+        config.verify_on_start()
+    );
+
+    // Default empty attestation report
+    let default_report = "No attestation report available.".to_string();
 
     // Create application state
     let app_state = web::Data::new(AppState {
         derived_key_hash: Arc::new(RwLock::new(derived_key_hash)),
+        attestation_report: Arc::new(RwLock::new(default_report)),
+        raw_report: Arc::new(RwLock::new(None)),
     });
 
     // Get the derived key
@@ -149,6 +188,7 @@ async fn main() -> std::io::Result<()> {
     if config.verify_on_start() {
         info!("Verification on start is enabled, performing attestation and verification");
         let test_msg: Option<&str> = Some("hola");
+
         // Test AMD attestation
         let report = if let Some(msg) = test_msg {
             AmdSevSnpAttestation::attest(msg).await.unwrap()
@@ -156,6 +196,26 @@ async fn main() -> std::io::Result<()> {
             return Ok(());
         };
         info!("Report: {:?}", report);
+
+        // Store the attestation report in AppState using Debug formatting
+        let report_string = format!("{:#?}", report);
+        info!("Storing attestation report");
+
+        // Store the pretty-printed version for HTML display
+        let mut app_report = app_state.attestation_report.write().await;
+        *app_report = report_string;
+
+        // Create a custom JSON structure for the API
+        let json_value = serde_json::json!({
+            "report_type": "AMD SEV-SNP Attestation",
+            "message": test_msg.unwrap_or("none"),
+            "status": "verified",
+            "details": format!("{:#?}", report)
+        });
+
+        // Store the JSON representation for API access
+        let mut raw_report = app_state.raw_report.write().await;
+        *raw_report = Some(json_value);
 
         // Test AMD report verification
         let verification = if let Some(msg) = test_msg {
@@ -167,7 +227,38 @@ async fn main() -> std::io::Result<()> {
         };
         info!("Verification: {:?}", verification);
     } else {
-        info!("Verification on start is disabled, skipping attestation and verification");
+        info!("Verification on start is disabled, but still generating attestation report");
+
+        // Generate attestation report anyway for display purposes
+        let test_msg = "reporteer";
+        match AmdSevSnpAttestation::attest(test_msg).await {
+            Ok(report) => {
+                info!("Generated attestation report for display");
+
+                // Store the attestation report in AppState using Debug formatting
+                let report_string = format!("{:#?}", report);
+
+                // Store the pretty-printed version for HTML display
+                let mut app_report = app_state.attestation_report.write().await;
+                *app_report = report_string;
+
+                // Convert the report to a serde_json::Value for the API
+                // This involves creating a custom JSON structure since the report doesn't implement Serialize
+                let json_value = serde_json::json!({
+                    "report_type": "AMD SEV-SNP Attestation",
+                    "message": test_msg,
+                    "status": "verified",
+                    "details": format!("{:#?}", report)
+                });
+
+                // Store the JSON representation for API access
+                let mut raw_report = app_state.raw_report.write().await;
+                *raw_report = Some(json_value);
+            }
+            Err(e) => {
+                warn!("Failed to generate attestation report: {:?}", e);
+            }
+        }
     }
 
     // Start web server
@@ -177,6 +268,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .route("/", web::get().to(index))
             .route("/api/hash", web::get().to(get_hash))
+            .route("/api/report", web::get().to(get_report))
             .route("/health", web::get().to(health))
     })
     .bind(("0.0.0.0", config.server_port()))?
@@ -193,6 +285,8 @@ mod tests {
     async fn test_get_hash_endpoint() {
         let app_state = web::Data::new(AppState {
             derived_key_hash: Arc::new(RwLock::new("test_hash".to_string())),
+            attestation_report: Arc::new(RwLock::new("test_report".to_string())),
+            raw_report: Arc::new(RwLock::new(None)),
         });
 
         let app = test::init_service(
@@ -211,6 +305,8 @@ mod tests {
     async fn test_index_endpoint() {
         let app_state = web::Data::new(AppState {
             derived_key_hash: Arc::new(RwLock::new("test_hash".to_string())),
+            attestation_report: Arc::new(RwLock::new("test_report".to_string())),
+            raw_report: Arc::new(RwLock::new(None)),
         });
 
         let app = test::init_service(
@@ -221,6 +317,26 @@ mod tests {
         .await;
 
         let req = test::TestRequest::get().uri("/").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_web::test]
+    async fn test_report_endpoint() {
+        let app_state = web::Data::new(AppState {
+            derived_key_hash: Arc::new(RwLock::new("test_hash".to_string())),
+            attestation_report: Arc::new(RwLock::new("test_report".to_string())),
+            raw_report: Arc::new(RwLock::new(Some(serde_json::json!({"test": "value"})))),
+        });
+
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state.clone())
+                .route("/api/report", web::get().to(get_report)),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/api/report").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
     }

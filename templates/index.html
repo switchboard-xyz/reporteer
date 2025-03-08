@@ -20,11 +20,11 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        h1 {
+        h1, h2, h3 {
             color: #2c3e50;
             margin-bottom: 1rem;
         }
-        .hash-container {
+        .hash-container, .report-container {
             background-color: #f8f9fa;
             padding: 1rem;
             border-radius: 4px;
@@ -44,6 +44,27 @@
             border-radius: 3px;
             font-family: monospace;
         }
+        .report-section {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .report-item {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+        .report-label {
+            font-weight: bold;
+            width: 200px;
+            color: #2c3e50;
+        }
+        .report-value {
+            flex: 1;
+        }
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -52,10 +73,18 @@
         <div class="hash-container">
             {{ derived_key_hash }}
         </div>
-        
+
+        <div class="report-section">
+            <h2>Attestation Report</h2>
+            <div class="report-container">
+                <pre>{{ attestation_report }}</pre>
+            </div>
+        </div>
+
         <div class="api-info">
-            <h2>API Endpoint</h2>
-            <p>The hash is also available via the JSON API endpoint at: <code>/api/hash</code></p>
+            <h2>API Endpoints</h2>
+            <p>The hash is available via the JSON API endpoint at: <code>/api/hash</code></p>
+            <p>The full attestation report is available at: <code>/api/report</code></p>
         </div>
     </div>
 </body>
