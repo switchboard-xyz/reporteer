@@ -42,7 +42,7 @@ impl Config {
 
         let server_port = env::var("REPORTEER_SERVER_PORT")
             .map(|port| {
-                port.parse::<u16>()
+                port.trim().parse::<u16>()
                     .map_err(|e| ReporteerError::ConfigError(format!("Invalid server port: {}", e)))
             })
             .unwrap_or_else(|_| Ok(3000))?;
