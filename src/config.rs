@@ -39,9 +39,6 @@ impl Config {
             .unwrap_or_else(|_| {
                 Ok(Url::parse("http://127.0.0.1:8006/derived_key").expect("Invalid default URL"))
             })?;
-        let server_port_env = env::var("REPORTEER_SERVER_PORT");
-
-        print!("Server port env: '{}'", server_port_env.unwrap());
 
         let server_port = env::var("REPORTEER_SERVER_PORT")
             .map(|port| {
