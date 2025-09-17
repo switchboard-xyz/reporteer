@@ -17,7 +17,8 @@ thiserror = "1.0"
 log = "0.4"
 env_logger = "0.10"
 url = { version = "2", features = ["serde"] }
-sail-sdk = "=0.1.4"
+sail-sdk = {path = "./sail-sdk-0.1.7" }
+# sail-sdk = "=0.1.4"
 
 # Cryptography
 sha2 = "0.10"

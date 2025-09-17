@@ -51,6 +51,9 @@ COPY templates /app/templates
 # Copy source code
 COPY src ./src/
 
+# Copy local sail package
+COPY ./sail-sdk-0.1.7 ./sail-sdk-0.1.7/
+
 # Build for release
 RUN cargo build --release
 
