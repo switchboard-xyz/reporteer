@@ -96,6 +96,7 @@ async fn health() -> impl Responder {
 
 // Function to fetch and hash the derived key
 async fn fetch_derived_key(endpoint_url: &str) -> Result<String> {
+    info!("fetching derived key at {}", endpoint_url);
     let client = reqwest::Client::new();
     let response = client
         .get(endpoint_url)
@@ -103,13 +104,16 @@ async fn fetch_derived_key(endpoint_url: &str) -> Result<String> {
         .await
         .map_err(ReporteerError::FetchError)?;
 
+    info!("Got derived_key response status {}", response.status());
     let derived_key = response.text().await.map_err(ReporteerError::FetchError)?;
 
+    info!("Got derived_key response text but not printing");
+    info!("Hashing derived_key");
     // Create SHA-256 hash of the derived key
     let mut hasher = Sha256::new();
     hasher.update(derived_key.as_bytes());
     let hash = hasher.finalize();
-
+    
     Ok(format!("{:x}", hash))
 }
 
