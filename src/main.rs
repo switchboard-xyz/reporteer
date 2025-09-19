@@ -271,6 +271,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .route("/", web::get().to(index))
+            .route("/reporteer", web::get().to(index))
             .route("/api/hash", web::get().to(get_hash))
             .route("/api/report", web::get().to(get_report))
             .route("/health", web::get().to(health))

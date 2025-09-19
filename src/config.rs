@@ -37,7 +37,7 @@ impl Config {
                 })
             })
             .unwrap_or_else(|_| {
-                Ok(Url::parse("http://127.0.0.1:8006/derived_key").expect("Invalid default URL"))
+                Ok(Url::parse("http://127.0.0.1:8006/aa/derived_key").expect("Invalid default URL"))
             })?;
 
         let server_port = env::var("REPORTEER_SERVER_PORT")
