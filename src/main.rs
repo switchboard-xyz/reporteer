@@ -139,6 +139,7 @@ async fn main() -> std::io::Result<()> {
 
     // Log the hash at startup
     info!("Initial derived key hash: {}", derived_key_hash);
+    info!("Adding print statement to change docker image hash");
 
     // Log configuration settings
     info!(
